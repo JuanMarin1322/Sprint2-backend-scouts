@@ -14,7 +14,7 @@ const createPublicacion= async(req,res=response)=>{
             await publi.save();
             return res.status(200).json({ok:true,msg:RESPONSE_MESSAGES.SUCCESS_2XX});
         }
-        let rama_asociada = await Rama.findById(req.body.idRama);
+        let rama_asociada = await Rama.findById(req.body.ramaAsociada);
         if(!rama_asociada ) {return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});}
         publi_ = new Publicaciones(req.body);
         publi_.ramaAsignada.push(rama_asociada.id)
@@ -42,7 +42,7 @@ const readPublicacion= async(req,res=response)=>{
 const readPublicacionesByBranch= async(req,res=response)=>{
     try
     {
-    const publicaciones_ = await Publicaciones.find({ramaAsignada:req.params.idRama}).populate({path:"ramaAsignada",populate:{path:"Scout"}});
+    const publicaciones_ = await Publicaciones.find({ramaAsignada:req.params.idRama}).populate({path:"ramaAsignada",populate:{path:"Scout"}}).sort({fecha:"ascending"});
     if(publicaciones_){return res.status(200).json({ok:true,publicaciones_,msg:RESPONSE_MESSAGES.SUCCESS_2XX});}
     return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});
     }catch(e)
@@ -55,7 +55,7 @@ const readPublicacionesByBranch= async(req,res=response)=>{
 
 const readPublicaciones= async(req,res=response)=>{
     try{
-        const publicaciones_ = await Publicaciones.find().populate({path:"ramaAsignada",populate:{path:"Scout"}});
+        let publicaciones_ = await Publicaciones.find().populate({path:"ramaAsignada",populate:{path:"Scout"}});
         if(publicaciones_.length>0){return res.status(200).json({ok:true,publicaciones_,msg:RESPONSE_MESSAGES.SUCCESS_2XX});}
         return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});
     }catch(e){
@@ -65,7 +65,7 @@ const readPublicaciones= async(req,res=response)=>{
 }
 const readlastTwoPublicaciones= async(req,res=response)=>{
     try{
-        const publicaciones_ = await Publicaciones.find().sort({_id:-1}).populate({path:"ramaAsignada",populate:{path:"Scout"}});
+        let publicaciones_ = await Publicaciones.find().sort({_id:-1}).populate({path:"ramaAsignada",populate:{path:"Scout"}}).sort({fecha:"ascending"});
         if(publicaciones_.length>0){return res.status(200).json({ok:true,publicaciones_,msg:RESPONSE_MESSAGES.SUCCESS_2XX});}
         return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});
     }catch(e){
@@ -85,7 +85,7 @@ const readlastTwoPublicacionesByBranch= async(req,res=response)=>{
 }
 const readGeneralPublicaciones= async(req,res=response)=>{
     try{
-        const publicaciones_ = await Publicaciones.find({isGeneral:true}).populate({path:"ramaAsignada",populate:{path:"Scout"}});
+        const publicaciones_ = await Publicaciones.find({isGeneral:true}).populate({path:"ramaAsignada",populate:{path:"Scout"}}).sort({fecha:"ascending"});
         if(publicaciones_.length>0){return res.status(200).json({ok:true,publicaciones_,msg:RESPONSE_MESSAGES.SUCCESS_2XX});}
         return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});
     }catch(e){
@@ -93,6 +93,17 @@ const readGeneralPublicaciones= async(req,res=response)=>{
         return res.status(500).json({ok:false,msg:RESPONSE_MESSAGES.ERR_500});
     }
 }
+const readGeneralTwoPublicaciones= async(req,res=response)=>{
+    try{
+        const publicaciones_ = await Publicaciones.find({isGeneral:true}).populate({path:"ramaAsignada",populate:{path:"Scout"}}).sort({fecha:"descending"}).limit(2);
+        if(publicaciones_.length>0){return res.status(200).json({ok:true,publicaciones_,msg:RESPONSE_MESSAGES.SUCCESS_2XX});}
+        return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});
+    }catch(e){
+        logger.error(`readGeneralPublicaciones: Internal server error: ${e}`);
+        return res.status(500).json({ok:false,msg:RESPONSE_MESSAGES.ERR_500});
+    }
+}
+
 const updatePublicacion= async(req,res=response)=>{
     try {
         let publicacion_ = await Publicaciones.findById( req.params.id );
@@ -124,7 +135,9 @@ module.exports={
    readlastTwoPublicacionesByBranch,
    readPublicacionesByBranch,
    readGeneralPublicaciones,
+   readGeneralTwoPublicaciones,
    updatePublicacion,
-   deletePublicacion
+   deletePublicacion,
+   
 
 }

@@ -8,18 +8,17 @@ const logger = require('../Helpers/LoggerConfig');
 const { transporter, mailOptions_ } = require('../Helpers/EmailConfig');
 
 const createSuperAdministrador = async(req,res=response) => {
-    let {nombre,email}=req.body;
     let password = generateRandomPass(10);
     try {
-        let superAdmn=await SuperAdministrador.findOne({email});
+        let superAdmn=await SuperAdministrador.findOne({email:req.body.email});
         if(superAdmn){
             logger.error(`CreateSuperAdmin: Already exists an superAdmin account with the specified email`);
             return res.status(400).json({ok:false,msg:RESPONSE_MESSAGES.ERR_ALREADY_EXISTS});}
             let dbSuperAdministrador=new SuperAdministrador(req.body);
             dbSuperAdministrador.password=bcrypt.hashSync(password,bcrypt.genSaltSync());
-            const token= await generateJWT(dbSuperAdministrador.id,nombre,dbSuperAdministrador.apellido,email,0);
+            const token= await generateJWT(dbSuperAdministrador.id,dbSuperAdministrador.nombre,dbSuperAdministrador.apellido,dbSuperAdministrador.email,0);
             await dbSuperAdministrador.save();
-            transporter.sendMail(mailOptions_(email,password,1,dbSuperAdministrador.nombre),(err)=>{if(err){logger.error(`CreateSuperAdmin: Internal mail server error: ${err}`);}});
+            transporter.sendMail(mailOptions_(req.body.email,password,1,dbSuperAdministrador.nombre),(err)=>{if(err){logger.error(`CreateSuperAdmin: Internal mail server error: ${err}`);}});
             return res.status(201).json({ok:true,msg:RESPONSE_MESSAGES.SUCCESS_2XX,token});
     } catch (error) {logger.error(`CreateSuperAdmin: Internal server error: ${error}`);
     return res.status(500).json({ok:false,msg:RESPONSE_MESSAGES.ERR_500});
@@ -69,7 +68,7 @@ const readSuperAdministradors= async(req,res=response)=>{
 const revalidateToken= async(req,res=response) => {
     let {id,nombre,apellido,email,rol}=req;
     const token= await generateJWT(id,nombre,apellido,email,rol);
-   return res.status(200).json({ok:true,token,uid:id,nombre,email,rol});
+   return res.status(200).json({ok:true,token,uid:id,nombre,apellido,email,rol});
 }
 const updateSuperAdministrador= async(req,res=response) =>{
     try{

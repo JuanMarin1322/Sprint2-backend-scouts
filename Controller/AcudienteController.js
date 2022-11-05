@@ -6,7 +6,6 @@ const { mailOptions_, transporter } = require("../Helpers/EmailConfig");
 const{RESPONSE_MESSAGES}=require('../Helpers/ResponseMessages');
 const logger = require('../Helpers/LoggerConfig');
 const Acudiente = require('../Model/Acudiente');
-const Scout = require("../Model/Scout");
 const Rama = require("../Model/Rama");
 
 const createAcudiente= async(req,res=response)=>{
@@ -24,7 +23,7 @@ const createAcudiente= async(req,res=response)=>{
         linkImagen.splice(1,0,'upload/w_1000,c_fill,ar_1:1,g_auto,r_max/');
         acudiente_.link_imagen = linkImagen.join("");
         await acudiente_.save();
-        transporter.sendMail(mailOptions_(email,password,1,acudiente_.nombre),(err)=>{if(err){logger.error(`createAcudiente: Internal mail server error: ${err}`);}});
+        transporter.sendMail(mailOptions_(req.body.email,password,1,acudiente_.nombre),(err)=>{if(err){logger.error(`createAcudiente: Internal mail server error: ${err}`);}});
         const token= await generateJWT(acudiente_.id,acudiente_.nombre,acudiente_.apellido,acudiente_.email,3);
         return res.status(201).json({ok:true,msg:RESPONSE_MESSAGES.SUCCESS_2XX,token});
     } catch (error) {
@@ -34,7 +33,7 @@ const createAcudiente= async(req,res=response)=>{
 const revalidateToken= async(req,res=response) => {
     let {id,nombre,apellido,email,rol}=req;
     const token= await generateJWT(id,nombre,apellido,email,rol);
-   return res.status(200).json({ok:true,token,uid:id,nombre,email,rol});
+   return res.status(200).json({ok:true,token,uid:id,nombre,apellido,email,rol});
 }
 const readAcudiente= async(req,res=response)=>{
     try{
@@ -100,8 +99,8 @@ const loginAcudiente= async(req,res=response) => {
      if(!acudiente_){return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_EMAIL_NOT_FOUND})}
      let validPassword=bcrypt.compareSync(password,acudiente_.password);
      if(!validPassword){return res.status(400).json({ok:false,msg:RESPONSE_MESSAGES.ERR_INVALID_PASSWORD})}
-     const token= await generateJWT(acudiente_.id,acudiente_.nombre,acudiente_.email,3);
-     return res.status(200).json({ok:true,_id:acudiente_.id,nombre:acudiente_.nombre,email,rol: 3,token})
+     const token= await generateJWT(acudiente_.id,acudiente_.nombre,acudiente_.apellido,acudiente_.email,3);
+     return res.status(200).json({ok:true,_id:acudiente_.id,nombre:acudiente_.nombre,email,apellido: acudiente_.apellido,rol: 3,token})
     } catch (error) {
         logger.error(`loginAcudiente: Internal server error: ${error}`);
         return res.status(500).json({ok:false,msg:RESPONSE_MESSAGES.ERR_500})
@@ -120,19 +119,14 @@ const deleteAcudiente = async (req,res=response) =>{
 }
 const getScoutBranch = async(req,res=response)=>{
     try{
-        let branchs = await Rama.find(),scoutsBranchId=[];
-        let scoutsAcudiente = await Acudiente.findOne({_id:req.params.id}).populate('Scout');
+        let branchs = await Rama.find().populate("Scout"),scoutsBranchId=[],branchObj=[];
+        let scoutsAcudiente = await Acudiente.findOne({_id:req.params.id}).populate("Scout");
         if(!scoutsAcudiente){return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});}
         scoutsAcudiente.Scout.forEach((scoutAc)=>{
-            branchs.forEach((rama)=>{
-                rama.Scout.forEach((scoutBranch)=>{
-                    if(scoutAc._id===scoutBranch){
-                        scoutsBranchId.push({Rama:rama._id,Scout:scoutAc._id});
-                    }
-                });
-            });
-        });
-        return res.status(200).json({ok: true,msg:RESPONSE_MESSAGES.SUCCESS_2XX,scoutsBranchId});
+            branchs.forEach((rama)=>{rama.Scout.forEach((scoutBranch)=>{if(scoutAc.id===scoutBranch.id){
+                branchObj.push({_id:rama.id,nombre:rama.nombre,edadMin:rama.edadMin,edadMax:rama.edadMax,Scouts:{_id:scoutBranch._id,nombre:scoutBranch.nombre,apellido:scoutBranch.apellido,email:scoutBranch.email,celular:scoutBranch.celular,fecha_nacimiento:scoutBranch.fecha_nacimiento}});
+                scoutsBranchId.push({Rama:rama.id,Scout:{_id:scoutAc._id,nombre:scoutAc.nombre,apellido:scoutAc.apellido,email:scoutAc.email,celular:scoutAc.celular,fecha_nacimiento:scoutAc.fecha_nacimiento}});}});});});
+        return res.status(200).json({ok: true,msg:RESPONSE_MESSAGES.SUCCESS_2XX,scoutsBranchId,branchObj});
     }catch(e){logger.error(`getScoutBranch: Internal server error: ${e}`);}
 }
 const changePassword = async (req, res)=>{

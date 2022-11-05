@@ -27,7 +27,7 @@ const createScout = async(req,res=response) => {
         if(!rama){return res.status(404).json({ok:false,msg:RESPONSE_MESSAGES.ERR_NOT_FOUND});}
         rama.Scout.push(dbScout.id);
         await rama.save();
-        transporter.sendMail(mailOptions_(email,password,1,dbScout.nombre),(err)=>{if(err){logger.error(`createScout: Internal mail server error: ${err}`);}});
+        transporter.sendMail(mailOptions_(req.body.email,password,1,dbScout.nombre),(err)=>{if(err){logger.error(`createScout: Internal mail server error: ${err}`);}});
         const token= await generateJWT(dbScout.id,dbScout.nombre,dbScout.apellido,dbScout.email,2);
         return res.status(201).json({ok:true,msg:RESPONSE_MESSAGES.SUCCESS_2XX,token});
     } catch (e) {       
@@ -125,7 +125,7 @@ const loginScout= async(req,res=response) => {
 const revalidateToken= async(req,res=response) => {
     let {id,nombre,apellido,email,rol}=req;
     const token= await generateJWT(id,nombre,apellido,email,rol);
-   return res.status(200).json({ok:true,token,uid:id,nombre,email,rol});
+   return res.status(200).json({ok:true,token,uid:id,nombre,apellido,email,rol});
 }
 const updateScout= async(req,res=response) =>{
     try{
@@ -149,10 +149,7 @@ const deleteScout = async (req,res=response) =>{
         let acudiente__ = await Acudiente.findOne({Scout:scoutDB.id});
         if(!acudiente__){
                 try{
-                    let ramaOldScout = rama.Scout;
-                    ramaOldScout.forEach((scout)=>{if(scout===req.params.id){rama.Scout.splice(scout, 1);}
-                    });
-                    rama.Scout = ramaOldScout;
+                    rama.Scout.forEach((scout)=>{if(scout===req.params.id){rama.Scout.splice(scout, 1);}});
                     await rama.save();
                     await Scout.findByIdAndDelete(req.params.id);
                     return res.status(200).json({ok:true,msg:RESPONSE_MESSAGES.SUCCESS_2XX});
